@@ -1,0 +1,325 @@
+@baseUrl = http://localhost:3000/api
+
+# Seed data used in these examples:
+#   users:        1 (has orders), 2 and 3 (no orders)
+#   instruments:  47 = stock (latest close 925.85), 66 = ARS (MONEDA)
+#   user 1 orders 5 and 7 are NEW (cancellable)
+
+###############################################################
+# ASSETS
+###############################################################
+
+
+### All Assets
+GET {{baseUrl}}/assets
+
+### Search by ticker
+GET {{baseUrl}}/assets?ticker=ga
+
+### Search by name
+GET {{baseUrl}}/assets?name=banco
+
+### Search by ticker and name (both must match)
+GET {{baseUrl}}/assets?ticker=b&name=banco
+
+### Repeated parameter -> 400
+GET {{baseUrl}}/assets?ticker=a&ticker=b
+
+###############################################################
+# USERS
+###############################################################
+
+### List users
+GET {{baseUrl}}/users
+
+### Get user by id
+GET {{baseUrl}}/users/1
+
+### User not found -> 404
+GET {{baseUrl}}/users/999
+
+### Invalid id -> 400
+GET {{baseUrl}}/users/abc
+
+###############################################################
+# PORTFOLIO
+###############################################################
+
+### Portfolio: total value, available cash and positions
+GET {{baseUrl}}/users/1/portfolio
+
+### Portfolio of a user with no orders
+GET {{baseUrl}}/users/2/portfolio
+
+### User not found -> 404
+GET {{baseUrl}}/users/999/portfolio
+
+###############################################################
+# ORDERS: LIST
+###############################################################
+
+### List orders of a user (newest first)
+GET {{baseUrl}}/users/1/orders
+
+### User without orders -> []
+GET {{baseUrl}}/users/2/orders
+
+###############################################################
+# ORDERS: CASH IN / CASH OUT (instrument 66, MONEDA)
+###############################################################
+
+### Deposit 100000 pesos -> FILLED, price 1
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 66,
+  "side": "CASH_IN",
+  "type": "MARKET",
+  "size": 100000
+}
+
+### Withdraw within balance -> FILLED
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 66,
+  "side": "CASH_OUT",
+  "type": "MARKET",
+  "size": 1000
+}
+
+### Withdraw above balance -> 201 with status REJECTED
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 66,
+  "side": "CASH_OUT",
+  "type": "MARKET",
+  "size": 99999999
+}
+
+### CASH_IN on a stock -> 400
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "CASH_IN",
+  "type": "MARKET",
+  "size": 100
+}
+
+###############################################################
+# ORDERS: MARKET
+###############################################################
+
+### BUY by number of shares -> FILLED at latest close
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "MARKET",
+  "size": 10
+}
+
+### BUY by amount in pesos -> size = floor(10000 / close)
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "MARKET",
+  "amount": 10000
+}
+
+### Amount smaller than one share -> 201 with status REJECTED, size 0
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "MARKET",
+  "amount": 1
+}
+
+### SELL within position -> FILLED
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "SELL",
+  "type": "MARKET",
+  "size": 5
+}
+
+### SELL above position -> 201 with status REJECTED
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "SELL",
+  "type": "MARKET",
+  "size": 100000
+}
+
+### BUY without enough cash (user 3 has no balance) -> 201 with status REJECTED
+POST {{baseUrl}}/users/3/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "MARKET",
+  "size": 1
+}
+
+###############################################################
+# ORDERS: LIMIT
+###############################################################
+
+### BUY LIMIT by shares -> NEW at the informed price
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "LIMIT",
+  "size": 10,
+  "price": 900
+}
+
+### BUY LIMIT by amount -> size = floor(10000 / 900) = 11, NEW
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "LIMIT",
+  "amount": 10000,
+  "price": 900
+}
+
+###############################################################
+# ORDERS: VALIDATION ERRORS (all return 400)
+###############################################################
+
+### LIMIT without price
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "LIMIT",
+  "size": 10
+}
+
+### size and amount together
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "MARKET",
+  "size": 10,
+  "amount": 10000
+}
+
+### Neither size nor amount
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "MARKET"
+}
+
+### Invalid side
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "COMPRAR",
+  "type": "MARKET",
+  "size": 10
+}
+
+### Fractional size
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "MARKET",
+  "size": 1.5
+}
+
+### BUY on a currency (MONEDA) -> 400
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 66,
+  "side": "BUY",
+  "type": "MARKET",
+  "size": 100
+}
+
+### Instrument not found -> 404
+POST {{baseUrl}}/users/2/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 9999,
+  "side": "BUY",
+  "type": "MARKET",
+  "size": 1
+}
+
+### User not found -> 404
+POST {{baseUrl}}/users/999/orders
+Content-Type: application/json
+
+{
+  "instrumentId": 47,
+  "side": "BUY",
+  "type": "MARKET",
+  "size": 1
+}
+
+###############################################################
+# ORDERS: CANCEL (only NEW orders)
+###############################################################
+
+### Cancel a NEW order -> 200, status CANCELLED
+DELETE {{baseUrl}}/users/1/orders/5
+
+### Cancel it again -> 409 (already CANCELLED)
+DELETE {{baseUrl}}/users/1/orders/5
+
+### Cancel a FILLED order -> 409
+DELETE {{baseUrl}}/users/1/orders/2
+
+### Order belongs to another user -> 404
+DELETE {{baseUrl}}/users/2/orders/7
+
+### Order not found -> 404
+DELETE {{baseUrl}}/users/1/orders/9999
+
+### Invalid orderId -> 400
+DELETE {{baseUrl}}/users/1/orders/abc
