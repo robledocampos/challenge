@@ -47,7 +47,7 @@ export interface OrderWithInstrument extends Order {
 }
 
 export async function listOrders(userId: number): Promise<OrderWithInstrument[]> {
-    const { rows } = await pool.query<OrderWithInstrument>(
+    const {rows} = await pool.query<OrderWithInstrument>(
         `SELECT o.id,
             o.instrumentid AS "instrumentId",
             i.ticker,
@@ -70,9 +70,9 @@ export async function listOrders(userId: number): Promise<OrderWithInstrument[]>
 }
 
 export type CancelResult =
-    | { result: 'CANCELLED'; order: Order }
-    | { result: 'NOT_FOUND' }
-    | { result: 'NOT_CANCELLABLE'; status: string };
+    | {result: 'CANCELLED'; order: Order}
+    | {result: 'NOT_FOUND'}
+    | {result: 'NOT_CANCELLABLE'; status: string};
 
 export async function getPositions(userId: number): Promise<RawPosition[]> {
     const {rows} = await pool.query<RawPosition>(
@@ -108,7 +108,7 @@ export async function getPositions(userId: number): Promise<RawPosition[]> {
 }
 
 export async function getCashBalance(userId: number, db: Db = pool): Promise<number> {
-    const { rows } = await db.query<{ cash: number }>(
+    const {rows} = await db.query<{ cash: number }>(
         `SELECT COALESCE(SUM(
               CASE side
                 WHEN 'CASH_IN'  THEN  size * price
@@ -127,7 +127,7 @@ export async function getCashBalance(userId: number, db: Db = pool): Promise<num
 }
 
 async function getPositionQuantity(userId: number, instrumentId: number, db: Db): Promise<number> {
-    const { rows } = await db.query<{ quantity: number }>(
+    const {rows} = await db.query<{ quantity: number }>(
         `SELECT COALESCE(SUM(CASE WHEN side = 'BUY' THEN size ELSE -size END), 0)::int AS quantity
        FROM orders
       WHERE userid = $1
@@ -141,7 +141,7 @@ async function getPositionQuantity(userId: number, instrumentId: number, db: Db)
 }
 
 async function getLastClose(instrumentId: number, db: Db): Promise<number | null> {
-    const { rows } = await db.query<{ close: number | null }>(
+    const {rows} = await db.query<{ close: number | null }>(
         `SELECT close::float8 AS close
        FROM marketdata
       WHERE instrumentid = $1 AND close IS NOT NULL
@@ -201,7 +201,7 @@ export async function createOrder(input: NewOrder): Promise<Order> {
             }
         }
 
-        const { rows } = await client.query<Order>(
+        const {rows} = await client.query<Order>(
             `INSERT INTO orders (instrumentid, userid, size, price, type, side, status, datetime)
              VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
                  RETURNING id,

@@ -46,7 +46,7 @@ describe('POST /users/:id/orders: MARKET', () => {
         const res = await portfolio(2);
 
         expect(res.body.instruments[0].dailyReturnPct).toBeCloseTo(0.44, 2);
-        expect(res.body.instruments[0].totalReturnPct).toBeCloseTo(0, 2); // comprou ao close atual
+        expect(res.body.instruments[0].totalReturnPct).toBeCloseTo(0, 2);
     });
 
     it('with amount, calculates maximum stocks', async () => {
@@ -99,7 +99,6 @@ describe('POST /users/:id/orders: LIMIT', () => {
             instrumentId: STOCK, side: 'BUY', type: 'LIMIT', amount: 10000, price: 900,
         });
 
-        // 10000 / 900 = 11.1 -> 11
         expect(res.body).toMatchObject({size: 11, status: 'NEW'});
     });
 
